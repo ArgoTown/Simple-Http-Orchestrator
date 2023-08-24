@@ -1,12 +1,9 @@
-﻿using Simple.Http.Orchestrator.Services;
-
-namespace Simple.Http.Orchestrator;
+﻿namespace Simple.Http.Orchestrator.Contracts;
 
 public class Request
 {
     public string Id { get; init; } = null!;
     public int ExecutionOrder { get; init; }
-    public string ServiceCall { get; init; } = null!;
     public Uri Uri { get; init; } = null!;
     public bool Completed { get; set; }
     public bool IsAllDependenciesCompleted { get; set; }
