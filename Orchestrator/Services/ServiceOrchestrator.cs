@@ -1,25 +1,17 @@
-﻿using Simple.Http.Orchestrator.Services;
+﻿using Simple.Http.Orchestrator.Contracts;
 
-namespace Simple.Http.Orchestrator;
+namespace Simple.Http.Orchestrator.Services;
 
-public class ServiceOrchestrator
+public class ServiceOrchestrator : IServiceOrchestrator
 {
-    private readonly IDictionary<string, IServiceCall> _services = new Dictionary<string, IServiceCall>();
+    private readonly IHttpClientFactory _httpClientFactory;
 
-    public ServiceOrchestrator(IDictionary<string, IServiceCall> services)
+    public ServiceOrchestrator(IHttpClientFactory httpClientFactory)
     {
-        if (services is null || services.Count.Equals(0))
-        {
-            throw new ArgumentNullException(nameof(services));
-        }
-
-        foreach (var service in services)
-        {
-            _services.Add(service.Key, service.Value);
-        }
+        _httpClientFactory = httpClientFactory;
     }
 
-    public async Task ExecuteByOrder(Activity activity, CancellationToken cancellationToken)
+    public async Task ExecuteByOrderAsync(Activity activity, CancellationToken cancellationToken = default)
     {
         var requestsDictionary = activity.Requests
             .OrderBy(request => request.ExecutionOrder)
@@ -27,8 +19,7 @@ public class ServiceOrchestrator
 
         foreach (var (requestUniqueId, request) in requestsDictionary)
         {
-            var service = _services[request.ServiceCall];
-            if (service != null && (!request.Completed))
+            if (!request.Completed)
             {
                 var dependencies = request.Dependencies.ToList();
                 if (dependencies.Any())
@@ -50,19 +41,26 @@ public class ServiceOrchestrator
                         continue;
                     }
 
-                    await SetRequestAsCompleted(request, service, cancellationToken);
+                    await SetRequestAsCompleted(request, cancellationToken);
                 }
                 else
                 {
-                    await SetRequestAsCompleted(request, service, cancellationToken);
+                    await SetRequestAsCompleted(request, cancellationToken);
                 }
             }
         }
     }
 
-    private static async Task SetRequestAsCompleted(Request request, IServiceCall service, CancellationToken cancellationToken)
+    private async Task SetRequestAsCompleted(Request request, CancellationToken cancellationToken)
     {
-        await service.Execute(request.Uri, cancellationToken);
+        var httpClient = _httpClientFactory.CreateClient();
+        var httpRequest = new HttpRequestMessage(HttpMethod.Post, request.Uri.AbsoluteUri);
+        var response = await httpClient.SendAsync(httpRequest, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            // Act on this request
+        }
+
         request.IsAllDependenciesCompleted = true;
         request.Completed = true;
     }
