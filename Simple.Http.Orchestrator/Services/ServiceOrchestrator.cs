@@ -51,10 +51,10 @@ public class ServiceOrchestrator : IServiceOrchestrator
         }
     }
 
-    private async Task SetRequestAsCompleted(Request request, CancellationToken cancellationToken)
+    private async Task SetRequestAsCompleted(Requests request, CancellationToken cancellationToken)
     {
         var httpClient = _httpClientFactory.CreateClient();
-        var httpRequest = new HttpRequestMessage(HttpMethod.Post, request.Uri.AbsoluteUri);
+        var httpRequest = new HttpRequestMessage(HttpMethod.Post, request.Host.AbsoluteUri);
         var response = await httpClient.SendAsync(httpRequest, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
