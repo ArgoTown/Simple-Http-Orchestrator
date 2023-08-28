@@ -1,14 +1,17 @@
-﻿namespace Simple.Http.Orchestrator.Contracts;
+﻿using System;
+
+namespace Simple.Http.Orchestrator.Contracts;
 
 public class Requests
 {
     public string Id { get; init; } = null!;
     public int ExecutionOrder { get; init; }
     public Uri Host { get; init; } = null!;
+    public CallType CallType { get; init; }
     public bool Completed { get; set; }
     public bool IsAllDependenciesCompleted { get; set; }
     public List<string> Dependencies { get; init; } = new List<string>();
-    public List<Versions> Versions { get; init; } = new List<Versions>();
+    public List<Parameters> Parameters { get; init; } = new List<Parameters>();
 
     public void Validate()
     {
@@ -22,55 +25,29 @@ public class Requests
             throw new ArgumentException($"Property {nameof(Host)} in JSON object {nameof(Requests)} not defined.");
         }
 
+        if (CallType == CallType.UNDEFINED)
+        {
+            throw new ArgumentException($"Property {nameof(CallType)} in JSON object {nameof(Requests)} not defined.");
+        }
+
         if (Dependencies is null)
         {
             throw new ArgumentException($"Property {nameof(Dependencies)} in JSON object {nameof(Requests)} not defined.");
         }
 
-        foreach (var version in Versions)
+        if (!Parameters.Any())
         {
-            version.Validate();
-        }
-    }
-}
-
-public class Versions
-{
-    public string ApiVersion { get; init; } = null!;
-    public CallType CallType { get; init; }
-    public string Resource { get; init; } = null!;
-    public List<RequestParameters> RequestParameters { get; init; } = new List<RequestParameters>();
-
-    public void Validate()
-    {
-        if (string.IsNullOrWhiteSpace(ApiVersion))
-        {
-            throw new ArgumentException($"Property {nameof(CallType)} in JSON object {nameof(Versions)} not defined.");
+            throw new ArgumentException($"Property {nameof(Parameters)} in JSON object {nameof(Requests)} not defined.");
         }
 
-        if(CallType == CallType.UNDEFINED)
-        {
-            throw new ArgumentException($"Property {nameof(CallType)} in JSON object {nameof(Versions)} not defined.");
-        }
-
-        if (string.IsNullOrWhiteSpace(Resource))
-        {
-            throw new ArgumentException($"Property {nameof(Resource)} in JSON object {nameof(Versions)} not defined.");
-        }
-
-        if (!RequestParameters.Any())
-        {
-            throw new ArgumentException($"Property {nameof(RequestParameters)} in JSON object {nameof(Versions)} not defined.");
-        }
-
-        foreach (var parameter in RequestParameters)
+        foreach (var parameter in Parameters)
         {
             parameter.Validate();
         }
     }
 }
 
-public class RequestParameters
+public class Parameters
 {
     public ParameterPlace Place { get; init; }
     public string Payload { get; init; } = null!;
@@ -80,17 +57,17 @@ public class RequestParameters
     {
         if (Place == ParameterPlace.UNDEFINED)
         {
-            throw new ArgumentException($"Property {nameof(Place)} in JSON object {nameof(RequestParameters)} not defined.");
+            throw new ArgumentException($"Property {nameof(Place)} in JSON object {nameof(Parameters)} not defined.");
         }
 
         if (string.IsNullOrWhiteSpace(Payload))
         {
-            throw new ArgumentException($"Property {nameof(Payload)} in JSON object {nameof(RequestParameters)} not defined.");
+            throw new ArgumentException($"Property {nameof(Payload)} in JSON object {nameof(Parameters)} not defined.");
         }
 
         if (string.IsNullOrWhiteSpace(PayloadSchemaMapper))
         {
-            throw new ArgumentException($"Property {nameof(PayloadSchemaMapper)} in JSON object {nameof(RequestParameters)} not defined.");
+            throw new ArgumentException($"Property {nameof(PayloadSchemaMapper)} in JSON object {nameof(Parameters)} not defined.");
         }
     }
 }
@@ -111,6 +88,5 @@ public enum ParameterPlace
     ROUTE,
     QUERY,
     BODY,
-    HEADER, 
-    FORM
+    HEADER
 }
