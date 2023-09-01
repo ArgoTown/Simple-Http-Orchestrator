@@ -36,7 +36,7 @@ public class ServiceOrchestrator : IServiceOrchestrator
                 async (request, cancellationToken) =>
                 {
                     using var httpClient = _httpClientFactory.CreateClient();
-                    await request.ExecuteAsync(httpClient, cancellationToken);
+                    await request.ExecuteAsync(httpClient, _requestsState, cancellationToken);
                 }
             );
     }
