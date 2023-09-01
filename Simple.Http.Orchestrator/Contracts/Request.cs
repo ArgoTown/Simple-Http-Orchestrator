@@ -9,11 +9,12 @@ public class Request
     public int ExecutionOrder { get; init; }
     public Uri Host { get; init; } = null!;
     public CallType CallType { get; init; }
-    public HttpMethod HttpMethod => CallType.GetHttpMethod();
     public bool IsCompleted { get; private set; }
     public bool IsFailed { get; private set; }
     public List<Parameter> Parameters { get; init; } = new();
+
     private readonly SemaphoreSlim _semaphoreSlim = new(1);
+    private HttpMethod HttpMethod => CallType.GetHttpMethod();
 
     public void Validate()
     {
@@ -66,6 +67,7 @@ public class Request
         {
             IsFailed = true;
             // Act on this request
+            return;
         }
 
         IsCompleted = true;
