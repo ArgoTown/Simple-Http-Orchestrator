@@ -11,6 +11,7 @@ public class Request
     public CallType CallType { get; init; }
     public bool IsCompleted { get; private set; }
     public bool IsFailed { get; private set; }
+    public string Response { get; private set; } = string.Empty;
     public List<Parameter> Parameters { get; init; } = new();
 
     private readonly SemaphoreSlim _semaphoreSlim = new(1);
@@ -69,6 +70,8 @@ public class Request
             // Act on this request
             return;
         }
+
+        Response = await response.Content.ReadAsStringAsync(cancellationToken);
 
         IsCompleted = true;
 
