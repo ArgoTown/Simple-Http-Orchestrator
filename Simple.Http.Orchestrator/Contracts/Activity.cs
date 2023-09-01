@@ -3,7 +3,7 @@
 public class Activity
 {
     public Guid Id { get; init; }
-    public List<Request> Requests { get; init; } = new List<Request>();
+    public List<Request> Requests { get; init; } = new();
 
     public void Validate()
     {
@@ -12,7 +12,7 @@ public class Activity
             throw new ArgumentException($"Property {nameof(Requests)} in JSON object {nameof(Activity)} not defined.");
         }
 
-        foreach (Request request in Requests) 
+        foreach (var request in Requests) 
         { 
             request.Validate();
         }

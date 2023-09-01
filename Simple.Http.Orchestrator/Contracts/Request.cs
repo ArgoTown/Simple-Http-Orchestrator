@@ -12,7 +12,7 @@ public class Request
     public HttpMethod HttpMethod => CallType.GetHttpMethod();
     public bool IsCompleted { get; private set; }
     public bool IsFailed { get; private set; }
-    public List<Parameter> Parameters { get; init; } = new List<Parameter>();
+    public List<Parameter> Parameters { get; init; } = new();
     private readonly SemaphoreSlim _semaphoreSlim = new(1);
 
     public void Validate()

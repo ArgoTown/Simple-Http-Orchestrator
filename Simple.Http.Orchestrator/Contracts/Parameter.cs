@@ -1,4 +1,6 @@
-﻿namespace Simple.Http.Orchestrator.Contracts;
+﻿using Simple.Http.Orchestrator.Enums;
+
+namespace Simple.Http.Orchestrator.Contracts;
 
 public class Parameter
 {
