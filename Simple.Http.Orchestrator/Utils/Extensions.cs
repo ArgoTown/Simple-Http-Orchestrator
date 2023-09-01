@@ -69,7 +69,7 @@ public static class Extensions
         if (parameter.Place.Equals(ParameterPlace.ROUTE))
         {
             var resourceList = parameter.RequestPayload.Split("/").Select(item => item.RemoveCurlyBrackets()).ToList();
-            foreach (var map in parameter.ReuestPayloadSchemaMaps)
+            foreach (var map in parameter.RequestPayloadSchemaMaps)
             {
                 var resourceIndexToUpdate = resourceList.IndexOf(map.Destination.RemoveCurlyBrackets());
                 resourceList[resourceIndexToUpdate] = map.Source;
@@ -83,7 +83,7 @@ public static class Extensions
 
         if (parameter.Place.Equals(ParameterPlace.HEADER))
         {
-            foreach (var map in parameter.ReuestPayloadSchemaMaps)
+            foreach (var map in parameter.RequestPayloadSchemaMaps)
             {
                 httpRequestMessage.Headers.TryAddWithoutValidation(map.Destination, map.Source);
             }

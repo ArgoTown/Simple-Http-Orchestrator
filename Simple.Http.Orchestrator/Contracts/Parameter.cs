@@ -6,7 +6,7 @@ public class Parameter
 {
     public ParameterPlace Place { get; init; }
     public string RequestPayload { get; init; } = null!;
-    public List<Map> ReuestPayloadSchemaMaps { get; init; } = new();
+    public List<Map> RequestPayloadSchemaMaps { get; init; } = new();
     public List<DependencyMap> Dependencies { get; init; } = new();
 
     public void Validate()
