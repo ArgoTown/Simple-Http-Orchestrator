@@ -10,7 +10,7 @@ builder.Services
     .AddEndpointsApiExplorer()
     .AddSwaggerGen()
     .AddSingleton<IServiceOrchestrator, ServiceOrchestrator>()
-    .AddHttpClient();
+    .AddHttpClient().AddHttpContextAccessor();
 
 var app = builder.Build();
 

@@ -4,5 +4,5 @@ namespace Simple.Http.Orchestrator.Services;
 
 public interface IServiceOrchestrator
 {
-    Task ExecuteByOrderAsync(Activity activity, CancellationToken cancellationToken = default);
+    void ExecuteAsync(Activity activity, CancellationToken cancellationToken = default);
 }

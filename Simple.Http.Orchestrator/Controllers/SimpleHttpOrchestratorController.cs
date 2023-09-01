@@ -1,5 +1,7 @@
+using Json.More;
 using Json.Patch;
 using Json.Path;
+using Json.Pointer;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Simple.Http.Orchestrator.Contracts;
@@ -28,32 +30,13 @@ namespace Orchestrator.Controllers
         }
 
         [HttpPost("start")]
-        public async Task<IActionResult> Start()
+        public ActionResult Start()
         {
             var activity = new Activity();
             _configuration.GetSection("Payload").Bind(activity);
-            activity.Validate();
+            activity.Validate();            
 
-
-            var requestJson = "{ \"id\": \"\", \"documents\": [ \"11\", \"22\" ] }";
-            //var patch = JsonSerializer.Deserialize<JsonPatch>(requestJson);
-            var requestNodes = JsonNode.Parse(requestJson);
-            //var pathForRequestToReplace = JsonPath.Parse("$.documents[*]");
-            //var requestNodesResult = pathForRequestToReplace.Evaluate(requestNodes);
-
-            var responseJson = "{ \"id\": \"\", \"documents\": [ \"DocOne\", \"DocTwo\" ] }";
-            var responseNodes = JsonNode.Parse(responseJson);
-            var pathForRequestToReplace = JsonPath.Parse("$.documents[*]");
-            var requestNodesResult = pathForRequestToReplace.Evaluate(responseNodes);
-
-            var patch = requestNodes.CreatePatch(requestNodesResult.Matches!);
-
-            var patchResult = patch!.Apply(requestJson);
-
-            var resultsss = JsonSerializer.Serialize(patchResult);
-
-
-            await _orchestrator.ExecuteByOrderAsync(activity, CancellationToken.None);
+            _orchestrator.ExecuteAsync(activity, CancellationToken.None);
             return Ok();
         }
 
