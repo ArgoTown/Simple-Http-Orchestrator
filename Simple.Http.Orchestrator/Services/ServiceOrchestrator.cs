@@ -14,16 +14,14 @@ public class ServiceOrchestrator : IServiceOrchestrator
 
     public async Task ExecuteAsync(Activity activity, CancellationToken cancellationToken = default)
     {
-        _requestsState = activity.Requests
-            .OrderBy(request => request.ExecutionOrder)
-            .ToDictionary(x => x.Id, x => x);
+        _requestsState = activity.Requests.ToDictionary(x => x.Id, x => x);
 
         await Parallel.ForEachAsync
             (
                 _requestsState.Values,
                 new ParallelOptions
                 {
-                    MaxDegreeOfParallelism = Environment.ProcessorCount * 2
+                    MaxDegreeOfParallelism = Environment.ProcessorCount
                 },
                 async (request, cancellationToken) =>
                 {

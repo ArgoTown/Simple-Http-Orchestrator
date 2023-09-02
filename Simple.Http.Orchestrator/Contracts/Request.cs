@@ -4,6 +4,7 @@ using Json.Path;
 using Json.Pointer;
 using Simple.Http.Orchestrator.Enums;
 using Simple.Http.Orchestrator.Utils;
+using System.Net.Mime;
 using System.Text.Json.Nodes;
 
 namespace Simple.Http.Orchestrator.Contracts;
@@ -11,14 +12,12 @@ namespace Simple.Http.Orchestrator.Contracts;
 public class Request
 {
     public string Id { get; init; } = null!;
-    public int ExecutionOrder { get; init; }
     public Uri Host { get; init; } = null!;
     public CallType CallType { get; init; }
     public bool IsCompleted { get; private set; }
     public bool IsFailed { get; private set; }
     public string Response { get; private set; } = string.Empty;
     public List<Parameter> Parameters { get; init; } = new();
-
 
     private readonly SemaphoreSlim _semaphoreSlim = new(1);
     private HttpMethod HttpMethod => CallType.GetHttpMethod();
@@ -111,7 +110,55 @@ public class Request
     {
         if (parameter.Place.Equals(ParameterPlace.BODY))
         {
-            httpRequestMessage.Content = new StringContent(parameter.RequestPayload); // Todo mappers in future
+            var requestPayload = parameter.RequestPayload;
+            if (parameter.RequestPayloadSchemaMaps.Any())
+            {
+                var requestJson = JsonNode.Parse(parameter.RequestPayload) 
+                    ?? throw new ArgumentNullException($"Parsing failed of this payload {parameter.RequestPayload} in request with name {Id}.");
+
+                foreach (var map in parameter.RequestPayloadSchemaMaps)
+                {
+                    var requestPathAsJsonPointer = JsonPath.Parse(map.Destination).AsJsonPointer();
+                    var destination = JsonPointer.Parse(requestPathAsJsonPointer);
+
+                    JsonNode? node;
+
+                    if(map.Source.StartsWith("{"))
+                    {
+                        try
+                        {
+                            var parsed = JsonNode.Parse(map.Source);
+
+                            if (!destination.TryEvaluate(parsed, out var data))
+                            {
+                                // Throw ?
+                            }
+
+                            node = data;
+                        }
+                        catch (Exception)
+                        {
+                            throw new InvalidOperationException();
+                        }
+                    }
+                    else
+                    {
+                        node = map.Source.ToJsonDocument().RootElement.AsNode();                       
+                    }
+
+                    var patch = new JsonPatch(PatchOperation.Replace(destination, node));
+
+                    requestJson = patch.Apply(requestJson).Result;
+                }
+
+                requestPayload = requestJson.ToJsonString();
+            }
+
+            httpRequestMessage.Content = new StringContent(
+                requestPayload, 
+                System.Text.Encoding.UTF8, 
+                MediaTypeNames.Application.Json); // Todo mappers in future
+
             return;
         }
 
@@ -121,7 +168,7 @@ public class Request
             foreach (var map in parameter.RequestPayloadSchemaMaps)
             {
                 var resourceIndexToUpdate = resourceList.IndexOf(map.Destination.RemoveCurlyBrackets());
-                resourceList[resourceIndexToUpdate] = map.Source;
+                resourceList[resourceIndexToUpdate] = map.Source.ToString()!;
             }
 
             _route = $"/{string.Join("/", resourceList)}";
@@ -132,7 +179,7 @@ public class Request
         {
             foreach (var map in parameter.RequestPayloadSchemaMaps)
             {
-                httpRequestMessage.Headers.TryAddWithoutValidation(map.Destination, map.Source);
+                httpRequestMessage.Headers.TryAddWithoutValidation(map.Destination, map.Source.ToString()!);
             }
 
             return;
@@ -146,7 +193,7 @@ public class Request
             {
                 foreach(var map in parameter.RequestPayloadSchemaMaps)
                 {
-                    parsedRequestQuery = parsedRequestQuery.Replace(map.Destination, map.Source);
+                    parsedRequestQuery = parsedRequestQuery.Replace(map.Destination, map.Source.ToString()!);
                 }
             }
 
@@ -161,7 +208,7 @@ public class Request
 
                     foreach(var map in dependency.ResponseToRequestMaps)
                     {
-                        var responseJsonPathForDestination = JsonPath.Parse(map.Source).AsJsonPointer();
+                        var responseJsonPathForDestination = JsonPath.Parse(map.Source.ToString()!).AsJsonPointer();
                         var responseJsonPointerForDestination = JsonPointer.Parse(responseJsonPathForDestination);
                         if (!responseJsonPointerForDestination.TryEvaluate(responseJsonNodes, out var responseData) && responseData is null)
                         {
