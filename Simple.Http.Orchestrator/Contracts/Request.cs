@@ -70,12 +70,15 @@ public class Request
 
         var httpRequest = new HttpRequestMessage(HttpMethod, Host.AbsoluteUri);
 
-        Parameters.ForEach(async parameter => await FillParameter(
-            parameter, 
-            state, 
-            httpRequest, 
+        foreach(var parameter in Parameters)
+        {
+            await FillParameter(
+            parameter,
+            state,
+            httpRequest,
             httpClientFactory,
-            cancellationToken));
+            cancellationToken);
+        }
 
         httpRequest.RequestUri = new Uri(httpRequest.RequestUri!.AbsoluteUri + _route + _query);
 
@@ -117,7 +120,7 @@ public class Request
                 resourceList[resourceIndexToUpdate] = map.Source;
             }
 
-            _route = string.Join("/", resourceList);
+            _route = $"/{string.Join("/", resourceList)}";
             return;
         }
 
@@ -141,8 +144,6 @@ public class Request
                 {
                     parsedRequestQuery = parsedRequestQuery.Replace(map.Destination, map.Source);
                 }
-
-                //_query = $"?{parsedRequestQuery}";
             }
 
             if (parameter.Dependencies.All(dependency => dependency.ResponseToRequestMaps.Any()))
@@ -151,13 +152,28 @@ public class Request
                 {
                     var request = state[dependency.Name];
                     await request.ExecuteAsync(httpClientFactory, state, cancellationToken);
-                    var response = request.Response;
 
-                    // TODO parsing and patch
+                    var responseJsonNodes = JsonNode.Parse(request.Response);
+
+                    foreach(var map in dependency.ResponseToRequestMaps)
+                    {
+                        var responseJsonPathForDestination = JsonPath.Parse(map.Source).AsJsonPointer();
+                        var responseJsonPointerForDestination = JsonPointer.Parse(responseJsonPathForDestination);
+                        if (!responseJsonPointerForDestination.TryEvaluate(responseJsonNodes, out var responseData) && responseData is null)
+                        {
+                            throw new ArgumentException("Either source path or destination path is wrong.");
+                        }
+
+                        var actualValue = responseData!.AsValue().ToString();
+
+                        parsedRequestQuery = parsedRequestQuery.Replace(map.Destination, actualValue);
+                    }
                 }
             }
 
-            var requestText = "{ \"complex\": { \"Test\": \"Value\" }, \"documents\": { \"\": \"\",  \"pages\": [ \"11\", \"22\" ] } }";
+            _query = $"?{parsedRequestQuery}";
+
+            /*var requestText = "{ \"complex\": { \"Test\": \"Value\" }, \"documents\": { \"\": \"\",  \"pages\": [ \"11\", \"22\" ] } }";
             var responseText = "{ \"id\": \"\", \"documents\": [ \"DocOne\", \"DocTwo\" ] }";
 
             var requestJson = JsonNode.Parse(requestText);
@@ -178,7 +194,7 @@ public class Request
 
             var patched = patch.Apply(requestJson);
 
-            Console.WriteLine(patched.Result.AsJsonString());
+            Console.WriteLine(patched.Result.AsJsonString());*/
             /*var delimiter = parameters.Payload[0].Equals("/") ? string.Empty : "/";
             var payload = delimiter + parameters.Payload;
             httpRequestMessage.RequestUri = new Uri(httpRequestMessage.RequestUri!.AbsoluteUri + payload);

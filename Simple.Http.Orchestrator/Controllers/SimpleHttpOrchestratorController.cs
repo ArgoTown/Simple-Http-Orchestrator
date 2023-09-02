@@ -23,7 +23,7 @@ namespace Orchestrator.Controllers
         }
 
         [HttpPost("start")]
-        public ActionResult Start()
+        public async Task<ActionResult> StartAsync()
         {
             var activity = new Activity();
             _configuration.GetSection("Payload").Bind(activity);
@@ -33,7 +33,7 @@ namespace Orchestrator.Controllers
                 return BadRequest(errors);
             }
 
-            _orchestrator.ExecuteAsync(activity, CancellationToken.None);
+            await _orchestrator.ExecuteAsync(activity, CancellationToken.None);
             return Ok();
         }
 
@@ -45,8 +45,16 @@ namespace Orchestrator.Controllers
             return Ok();
         }
 
-        [HttpPost("create-customer")]
-        public async Task<IActionResult> CreateCustomer()
+        [HttpPost("login")]
+        public async Task<IActionResult> Login()
+        {
+            _logger.LogInformation("Login endpoint is called.");
+            await Task.CompletedTask;
+            return Ok(new { customer = new { address = new { id = "CCE9C5A0-84F3-4433-88EB-FF908A465F7A" } } });
+        }
+
+        [HttpPost("create-customer/{id}/address/{addressId}/bind")]
+        public async Task<IActionResult> CreateCustomer([FromQuery] Guid traceId, [FromQuery] Guid addressId)
         {
             _logger.LogInformation("Create customer endpoint is called.");
             await Task.CompletedTask;

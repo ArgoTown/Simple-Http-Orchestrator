@@ -5,20 +5,20 @@ namespace Simple.Http.Orchestrator.Services;
 public class ServiceOrchestrator : IServiceOrchestrator
 {
     private readonly IHttpClientFactory _httpClientFactory;
-    private Dictionary<string, Request> _requestsState = new();
+    public Dictionary<string, Request> _requestsState = new();
 
     public ServiceOrchestrator(IHttpClientFactory httpClientFactory)
     {
         _httpClientFactory = httpClientFactory;
     }
 
-    public void ExecuteAsync(Activity activity, CancellationToken cancellationToken = default)
+    public async Task ExecuteAsync(Activity activity, CancellationToken cancellationToken = default)
     {
         _requestsState = activity.Requests
             .OrderBy(request => request.ExecutionOrder)
             .ToDictionary(x => x.Id, x => x);
 
-        Parallel.ForEachAsync
+        await Parallel.ForEachAsync
             (
                 _requestsState.Values,
                 new ParallelOptions
