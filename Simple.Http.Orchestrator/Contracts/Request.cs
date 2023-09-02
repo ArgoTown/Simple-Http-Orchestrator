@@ -19,8 +19,11 @@ public class Request
     public string Response { get; private set; } = string.Empty;
     public List<Parameter> Parameters { get; init; } = new();
 
+
     private readonly SemaphoreSlim _semaphoreSlim = new(1);
     private HttpMethod HttpMethod => CallType.GetHttpMethod();
+    private string _query = string.Empty;
+    private string _route = string.Empty;
 
     public List<string> Validate()
     {
@@ -74,6 +77,8 @@ public class Request
             httpClientFactory,
             cancellationToken));
 
+        httpRequest.RequestUri = new Uri(httpRequest.RequestUri!.AbsoluteUri + _route + _query);
+
         using var httpClient = httpClientFactory.CreateClient();
         var response = await httpClient.SendAsync(httpRequest, cancellationToken);
         if (!response.IsSuccessStatusCode)
@@ -97,9 +102,6 @@ public class Request
         IHttpClientFactory httpClientFactory,
         CancellationToken cancellationToken = default)
     {
-        var route = string.Empty;
-        var query = string.Empty;
-
         if (parameter.Place.Equals(ParameterPlace.BODY))
         {
             httpRequestMessage.Content = new StringContent(parameter.RequestPayload); // Todo mappers in future
@@ -115,8 +117,8 @@ public class Request
                 resourceList[resourceIndexToUpdate] = map.Source;
             }
 
-            var resourceUrl = string.Join("/", resourceList);
-            httpRequestMessage.RequestUri = new Uri(httpRequestMessage.RequestUri!.AbsoluteUri + resourceUrl);// TODO multiple params when provided, url must be build by place type smartly
+            _route = string.Join("/", resourceList);
+            return;
         }
 
         if (parameter.Place.Equals(ParameterPlace.HEADER))
@@ -125,20 +127,22 @@ public class Request
             {
                 httpRequestMessage.Headers.TryAddWithoutValidation(map.Destination, map.Source);
             }
+
+            return;
         }
 
         if (parameter.Place.Equals(ParameterPlace.QUERY))
         {
-            var parsedRequestAsJsonNodes = JsonNode.Parse(parameter.RequestPayload);
+            var parsedRequestQuery = parameter.RequestPayload;
 
             if (parameter.RequestPayloadSchemaMaps.Any())
             {
                 foreach(var map in parameter.RequestPayloadSchemaMaps)
                 {
-                    var requestDestination = JsonPath.Parse(map.Destination).AsJsonPointer();
-                    var requestDestinationPointer = JsonPointer.Parse(requestDestination);
-                    //var responsePathAsJsonPointer = JsonPath.Parse("$.documents[1]").AsJsonPointer();
+                    parsedRequestQuery = parsedRequestQuery.Replace(map.Destination, map.Source);
                 }
+
+                //_query = $"?{parsedRequestQuery}";
             }
 
             if (parameter.Dependencies.All(dependency => dependency.ResponseToRequestMaps.Any()))
@@ -179,6 +183,7 @@ public class Request
             var payload = delimiter + parameters.Payload;
             httpRequestMessage.RequestUri = new Uri(httpRequestMessage.RequestUri!.AbsoluteUri + payload);
             */
+            return;
         }
     }
 }
