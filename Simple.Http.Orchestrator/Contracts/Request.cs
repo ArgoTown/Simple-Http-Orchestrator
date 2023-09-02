@@ -113,8 +113,16 @@ public class Request
             var requestPayload = parameter.RequestPayload;
             if (parameter.RequestPayloadSchemaMaps.Any())
             {
-                var requestJson = JsonNode.Parse(parameter.RequestPayload) 
-                    ?? throw new ArgumentNullException($"Parsing failed of this payload {parameter.RequestPayload} in request with name {Id}.");
+                JsonNode? requestJson;
+                try
+                {
+                    requestJson = JsonNode.Parse(parameter.RequestPayload)
+                    ?? throw new ArgumentNullException($"Tried to parse this payload {parameter.RequestPayload} but value return null.");
+                }
+                catch (Exception)
+                {
+                    throw new InvalidOperationException($"Parsing failed of this payload {parameter.RequestPayload} in request with name {Id}.");
+                }
 
                 foreach (var map in parameter.RequestPayloadSchemaMaps)
                 {
@@ -123,7 +131,7 @@ public class Request
 
                     JsonNode? node;
 
-                    if(map.Source.StartsWith("{"))
+                    if (map.Source.StartsWith("{"))
                     {
                         try
                         {
@@ -138,7 +146,7 @@ public class Request
                         }
                         catch (Exception)
                         {
-                            throw new InvalidOperationException();
+                            throw new InvalidOperationException($"Parsing failed of this payload source {map.Source} in request with name {Id}.");
                         }
                     }
                     else
