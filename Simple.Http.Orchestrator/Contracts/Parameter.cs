@@ -9,11 +9,15 @@ public class Parameter
     public List<Map> RequestPayloadSchemaMaps { get; init; } = new();
     public List<DependencyMap> Dependencies { get; init; } = new();
 
-    public void Validate()
+    public List<string> Validate()
     {
+        var errors = new List<string>();
+
         if (Place == ParameterPlace.UNDEFINED)
         {
-            throw new ArgumentException($"Property {nameof(Place)} in JSON object {nameof(Parameter)} not defined.");
+            errors.Add($"Property {nameof(Place)} in JSON object {nameof(Parameter)} not defined.");
         }
+
+        return errors;
     }
 }

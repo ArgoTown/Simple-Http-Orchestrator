@@ -5,17 +5,17 @@ public class Activity
     public Guid Id { get; init; }
     public List<Request> Requests { get; init; } = new();
 
-    public void Validate()
+    public List<string> Validate()
     {
+        var errors = new List<string>();
         if (!Requests.Any())
         {
-            throw new ArgumentException($"Property {nameof(Requests)} in JSON object {nameof(Activity)} not defined.");
+            errors.Add($"Property {nameof(Requests)} in JSON object {nameof(Activity)} not defined.");
         }
 
-        foreach (var request in Requests) 
-        { 
-            request.Validate();
-        }
+        Requests.ForEach(request => errors.AddRange(request.Validate()));
+
+        return errors;
     }
 }
 

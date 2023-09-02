@@ -17,32 +17,33 @@ public class Request
     private readonly SemaphoreSlim _semaphoreSlim = new(1);
     private HttpMethod HttpMethod => CallType.GetHttpMethod();
 
-    public void Validate()
+    public List<string> Validate()
     {
+        var errors = new List<string>();
+
         if (string.IsNullOrWhiteSpace(Id))
         {
-            throw new ArgumentException($"Property {nameof(Id)} in JSON object {nameof(Request)} not defined.");
+            errors.Add($"Property {nameof(Id)} in JSON object {nameof(Request)} not defined.");
         }
 
         if (Host is null || !Host.IsAbsoluteUri)
         {
-            throw new ArgumentException($"Property {nameof(Host)} in JSON object {nameof(Request)} not defined.");
+            errors.Add($"Property {nameof(Host)} in JSON object {nameof(Request)} not defined.");
         }
 
         if (CallType == CallType.UNDEFINED)
         {
-            throw new ArgumentException($"Property {nameof(CallType)} in JSON object {nameof(Request)} not defined.");
+            errors.Add($"Property {nameof(CallType)} in JSON object {nameof(Request)} not defined.");
         }
 
         if (!Parameters.Any())
         {
-            throw new ArgumentException($"Property {nameof(Parameters)} in JSON object {nameof(Request)} not defined.");
+            errors.Add($"Property {nameof(Parameters)} in JSON object {nameof(Request)} not defined.");
         }
 
-        foreach (var parameter in Parameters)
-        {
-            parameter.Validate();
-        }
+        Parameters.ForEach(parameter => errors.AddRange(parameter.Validate()));
+
+        return errors;
     }
 
     public async Task ExecuteAsync(HttpClient httpClient, Dictionary<string, Request> state, CancellationToken cancellationToken = default)

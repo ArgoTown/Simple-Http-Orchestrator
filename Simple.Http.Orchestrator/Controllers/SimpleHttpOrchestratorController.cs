@@ -27,7 +27,11 @@ namespace Orchestrator.Controllers
         {
             var activity = new Activity();
             _configuration.GetSection("Payload").Bind(activity);
-            activity.Validate();            
+            var errors = activity.Validate(); 
+            if(errors.Any())
+            {
+                return BadRequest(errors);
+            }
 
             _orchestrator.ExecuteAsync(activity, CancellationToken.None);
             return Ok();
