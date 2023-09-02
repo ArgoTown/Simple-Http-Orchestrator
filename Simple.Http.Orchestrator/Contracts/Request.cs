@@ -70,15 +70,19 @@ public class Request
 
         var httpRequest = new HttpRequestMessage(HttpMethod, Host.AbsoluteUri);
 
+        var tasks = new List<Task>();
+
         foreach(var parameter in Parameters)
         {
-            await FillParameter(
+            tasks.Add(FillParameter(
             parameter,
             state,
             httpRequest,
             httpClientFactory,
-            cancellationToken);
+            cancellationToken));
         }
+
+        await Task.WhenAll(tasks);
 
         httpRequest.RequestUri = new Uri(httpRequest.RequestUri!.AbsoluteUri + _route + _query);
 
