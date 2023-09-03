@@ -6,6 +6,7 @@ using Simple.Http.Orchestrator.Enums;
 using Simple.Http.Orchestrator.Utils;
 using System.Net.Mime;
 using System.Text.Json.Nodes;
+using System.Xml.Linq;
 
 namespace Simple.Http.Orchestrator.Contracts;
 
@@ -116,8 +117,8 @@ public class Request
                 JsonNode? requestJson;
                 try
                 {
-                    requestJson = JsonNode.Parse(parameter.RequestPayload)
-                    ?? throw new ArgumentNullException($"Tried to parse this payload {parameter.RequestPayload} but value return null.");
+                    requestJson = JsonNode.Parse(requestPayload)
+                    ?? throw new ArgumentNullException($"Tried to parse this payload {parameter.RequestPayload} but value returned null.");
                 }
                 catch (Exception)
                 {
@@ -162,6 +163,48 @@ public class Request
                 requestPayload = requestJson.ToJsonString();
             }
 
+            if(parameter.Dependencies.Any(dependency => dependency.ResponseToRequestMaps.Any()))
+            {
+                JsonNode? requestJson;
+                try
+                {
+                    requestJson = JsonNode.Parse(requestPayload)
+                    ?? throw new ArgumentNullException($"Tried to parse this payload {parameter.RequestPayload} but value returned null.");
+                }
+                catch (Exception)
+                {
+                    throw new InvalidOperationException($"Parsing failed of this payload {parameter.RequestPayload} in request with name {Id}.");
+                }
+
+                foreach (var dependency in parameter.Dependencies)
+                {
+                    var request = state[dependency.Name];
+                    await request.ExecuteAsync(httpClientFactory, state, cancellationToken);
+
+                    var responseJsonNodes = JsonNode.Parse(request.Response);
+
+                    foreach (var map in dependency.ResponseToRequestMaps)
+                    {
+                        var dependencyResponsePath = JsonPath.Parse(map.Source).AsJsonPointer();
+                        var payloadRequestPath = JsonPath.Parse(map.Destination).AsJsonPointer();
+
+                        var dependencyResponsePathPointer = JsonPointer.Parse(dependencyResponsePath);
+                        var payloadRequestPathPointer = JsonPointer.Parse(payloadRequestPath);
+
+                        if (!dependencyResponsePathPointer.TryEvaluate(responseJsonNodes, out var responseData) && responseData is null)
+                        {
+                            throw new ArgumentException("Either source path or destination path is wrong.");
+                        }
+
+                        var patch = new JsonPatch(PatchOperation.Replace(payloadRequestPathPointer, responseData));
+
+                        var patchedResult = patch.Apply(requestJson).Result;
+                    }
+
+                    requestPayload = requestJson.ToJsonString();
+                }
+            }
+
             httpRequestMessage.Content = new StringContent(
                 requestPayload, 
                 System.Text.Encoding.UTF8, 
@@ -176,7 +219,7 @@ public class Request
             foreach (var map in parameter.RequestPayloadSchemaMaps)
             {
                 var resourceIndexToUpdate = resourceList.IndexOf(map.Destination.RemoveCurlyBrackets());
-                resourceList[resourceIndexToUpdate] = map.Source.ToString()!;
+                resourceList[resourceIndexToUpdate] = map.Source;
             }
 
             _route = $"/{string.Join("/", resourceList)}";
@@ -187,7 +230,7 @@ public class Request
         {
             foreach (var map in parameter.RequestPayloadSchemaMaps)
             {
-                httpRequestMessage.Headers.TryAddWithoutValidation(map.Destination, map.Source.ToString()!);
+                httpRequestMessage.Headers.TryAddWithoutValidation(map.Destination, map.Source);
             }
 
             return;
@@ -201,7 +244,7 @@ public class Request
             {
                 foreach(var map in parameter.RequestPayloadSchemaMaps)
                 {
-                    parsedRequestQuery = parsedRequestQuery.Replace(map.Destination, map.Source.ToString()!);
+                    parsedRequestQuery = parsedRequestQuery.Replace(map.Destination, map.Source);
                 }
             }
 
@@ -216,7 +259,7 @@ public class Request
 
                     foreach(var map in dependency.ResponseToRequestMaps)
                     {
-                        var responseJsonPathForDestination = JsonPath.Parse(map.Source.ToString()!).AsJsonPointer();
+                        var responseJsonPathForDestination = JsonPath.Parse(map.Source).AsJsonPointer();
                         var responseJsonPointerForDestination = JsonPointer.Parse(responseJsonPathForDestination);
                         if (!responseJsonPointerForDestination.TryEvaluate(responseJsonNodes, out var responseData) && responseData is null)
                         {
@@ -231,33 +274,6 @@ public class Request
             }
 
             _query = $"?{parsedRequestQuery}";
-
-            /*var requestText = "{ \"complex\": { \"Test\": \"Value\" }, \"documents\": { \"\": \"\",  \"pages\": [ \"11\", \"22\" ] } }";
-            var responseText = "{ \"id\": \"\", \"documents\": [ \"DocOne\", \"DocTwo\" ] }";
-
-            var requestJson = JsonNode.Parse(requestText);
-            var responseJson = JsonNode.Parse(responseText);
-
-            var requestPathAsJsonPointer = JsonPath.Parse("$.documents.pages[1]").AsJsonPointer();
-            var responsePathAsJsonPointer = JsonPath.Parse("$.documents[1]").AsJsonPointer();
-
-            var destination = JsonPointer.Parse(requestPathAsJsonPointer);
-            var source = JsonPointer.Parse(responsePathAsJsonPointer);
-
-            if (!source.TryEvaluate(responseJson, out var data) && data is null)
-            {
-                return;
-            }
-
-            var patch = new JsonPatch(PatchOperation.Replace(destination, data));
-
-            var patched = patch.Apply(requestJson);
-
-            Console.WriteLine(patched.Result.AsJsonString());*/
-            /*var delimiter = parameters.Payload[0].Equals("/") ? string.Empty : "/";
-            var payload = delimiter + parameters.Payload;
-            httpRequestMessage.RequestUri = new Uri(httpRequestMessage.RequestUri!.AbsoluteUri + payload);
-            */
             return;
         }
     }
