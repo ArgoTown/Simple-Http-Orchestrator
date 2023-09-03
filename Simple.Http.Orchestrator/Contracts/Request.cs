@@ -248,7 +248,7 @@ public class Request
                 }
             }
 
-            if (parameter.Dependencies.All(dependency => dependency.ResponseToRequestMaps.Any()))
+            if (parameter.Dependencies.Any(dependency => dependency.ResponseToRequestMaps.Any()))
             {
                 foreach (var dependency in parameter.Dependencies)
                 {
