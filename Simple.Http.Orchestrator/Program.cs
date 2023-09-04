@@ -9,8 +9,8 @@ builder.Services.AddControllers();
 builder.Services
     .AddEndpointsApiExplorer()
     .AddSwaggerGen()
-    .AddSingleton<IServiceOrchestrator, ServiceOrchestrator>()
-    .AddHttpClient().AddHttpContextAccessor();
+    .AddScoped<IServiceOrchestrator, ServiceOrchestrator>()
+    .AddHttpClient();
 
 var app = builder.Build();
 

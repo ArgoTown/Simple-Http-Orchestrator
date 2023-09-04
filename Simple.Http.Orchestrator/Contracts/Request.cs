@@ -6,7 +6,6 @@ using Simple.Http.Orchestrator.Enums;
 using Simple.Http.Orchestrator.Utils;
 using System.Net.Mime;
 using System.Text.Json.Nodes;
-using System.Xml.Linq;
 
 namespace Simple.Http.Orchestrator.Contracts;
 
@@ -54,17 +53,27 @@ public class Request
         return errors;
     }
 
-    public async Task ExecuteAsync(IHttpClientFactory httpClientFactory, Dictionary<string, Request> state, CancellationToken cancellationToken = default)
+    public async Task ExecuteAsync(
+        ILogger logger,
+        IHttpClientFactory httpClientFactory, 
+        Dictionary<string, Request> state, 
+        CancellationToken cancellationToken = default)
     {
-        if(IsCompleted || IsFailed)
+        if (IsCompleted || IsFailed)
         {
+            logger.LogInformation($"Retrieving already received response in service {Id} on thread {Environment.CurrentManagedThreadId}");
+
             return;
         }
 
-        await _semaphoreSlim.WaitAsync(cancellationToken);
+        logger.LogInformation($"Entering semaphore for service {Id} on thread {Environment.CurrentManagedThreadId}. Time {DateTime.UtcNow.ToString("O")}");
+
+        await _semaphoreSlim.WaitAsync(200, cancellationToken);
 
         if (IsCompleted || IsFailed)
         {
+            logger.LogInformation($"Retrieving already received response in service {Id} on thread {Environment.CurrentManagedThreadId}");
+
             return;
         }
 
@@ -74,7 +83,9 @@ public class Request
 
         foreach(var parameter in Parameters)
         {
+
             tasks.Add(FillParameter(
+                logger,
             parameter,
             state,
             httpRequest,
@@ -91,6 +102,8 @@ public class Request
         if (!response.IsSuccessStatusCode)
         {
             IsFailed = true;
+
+            _semaphoreSlim.Release();
             // Act on this request
             return;
         }
@@ -103,6 +116,7 @@ public class Request
     }
 
     public async Task FillParameter(
+        ILogger logger,
         Parameter parameter, 
         Dictionary<string, Request> state, 
         HttpRequestMessage httpRequestMessage,
@@ -178,8 +192,9 @@ public class Request
 
                 foreach (var dependency in parameter.Dependencies)
                 {
+                    logger.LogInformation($"Retrieve request object with name {dependency.Name} in parameter {parameter.Place}. Thread id {Environment.CurrentManagedThreadId}. Time {DateTime.UtcNow.ToString("O")}");
                     var request = state[dependency.Name];
-                    await request.ExecuteAsync(httpClientFactory, state, cancellationToken);
+                    await request.ExecuteAsync(logger, httpClientFactory, state, cancellationToken);
 
                     var responseJsonNodes = JsonNode.Parse(request.Response);
 
@@ -252,8 +267,10 @@ public class Request
             {
                 foreach (var dependency in parameter.Dependencies)
                 {
+                    logger.LogInformation($"Retrieve request object with name {dependency.Name} in parameter {parameter.Place}. Thread id {Environment.CurrentManagedThreadId}. Time {DateTime.UtcNow.ToString("O")}");
+
                     var request = state[dependency.Name];
-                    await request.ExecuteAsync(httpClientFactory, state, cancellationToken);
+                    await request.ExecuteAsync(logger, httpClientFactory, state, cancellationToken);
 
                     var responseJsonNodes = JsonNode.Parse(request.Response);
 
