@@ -66,17 +66,6 @@ public class Request
             return;
         }
 
-        logger.LogInformation($"Entering semaphore for service {Id} on thread {Environment.CurrentManagedThreadId}. Time {DateTime.UtcNow.ToString("O")}");
-
-        await _semaphoreSlim.WaitAsync(200, cancellationToken);
-
-        if (IsCompleted || IsFailed)
-        {
-            logger.LogInformation($"Retrieving already received response in service {Id} on thread {Environment.CurrentManagedThreadId}");
-
-            return;
-        }
-
         var httpRequest = new HttpRequestMessage(HttpMethod, Host.AbsoluteUri);
 
         var tasks = new List<Task>();
@@ -94,6 +83,17 @@ public class Request
         }
 
         await Task.WhenAll(tasks);
+
+        logger.LogInformation($"Entering semaphore for service {Id} on thread {Environment.CurrentManagedThreadId}. Time {DateTime.UtcNow.ToString("O")}");
+
+        await _semaphoreSlim.WaitAsync(200, cancellationToken);
+
+        if (IsCompleted || IsFailed)
+        {
+            logger.LogInformation($"Retrieving already received response in service {Id} on thread {Environment.CurrentManagedThreadId}");
+
+            return;
+        }
 
         httpRequest.RequestUri = new Uri(httpRequest.RequestUri!.AbsoluteUri + _route + _query);
 
